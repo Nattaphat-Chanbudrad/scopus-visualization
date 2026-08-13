@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scopus Keyword Co-occurrence Network</title>
+    <title>Scopus Keyword Co-occurrence Network (600 Records)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- vis-network CDN -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- PapaParse CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
 
@@ -15,11 +17,17 @@
     <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
         <div>
             <h1 class="text-xl font-bold text-indigo-400">Scopus Keyword Co-occurrence Network</h1>
-            <p class="text-xs text-slate-400">วิเคราะห์เครือข่ายความสัมพันธ์ Keyword จากข้อมูล Scopus (Computer Science)</p>
+            <p class="text-xs text-slate-400">วิเคราะห์เครือข่ายความสัมพันธ์ Keyword จากข้อมูล Scopus 600 รายการ (Computer Science)</p>
         </div>
-        <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>โหลดข้อมูลอัตโนมัติเรียบร้อย</span>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>โหลดข้อมูล 600 รายการเรียบร้อย</span>
+            </div>
+            <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg cursor-pointer transition shadow">
+                📁 เปลี่ยนไฟล์ CSV
+                <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+            </label>
         </div>
     </header>
 
@@ -33,9 +41,9 @@
                     <div>
                         <label class="text-xs text-slate-400 flex justify-between">
                             <span>ความถี่ขั้นต่ำของ Keyword:</span>
-                            <span id="minOccurVal" class="text-indigo-400 font-bold">1</span>
+                            <span id="minOccurVal" class="text-indigo-400 font-bold">3</span>
                         </label>
-                        <input type="range" id="minOccur" min="1" max="5" value="1" class="w-full mt-1 accent-indigo-500">
+                        <input type="range" id="minOccur" min="2" max="15" value="3" class="w-full mt-1 accent-indigo-500">
                     </div>
                 </div>
             </div>
@@ -44,8 +52,8 @@
                 <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">สรุปข้อมูลเครือข่าย</h2>
                 <div class="space-y-2 text-sm text-slate-300">
                     <div class="flex justify-between bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                        <span>แหล่งข้อมูล:</span>
-                        <span class="font-medium text-indigo-400">Scopus Export</span>
+                        <span>จำนวนงานวิจัย:</span>
+                        <span class="font-medium text-indigo-400">600 Documents</span>
                     </div>
                     <div class="flex justify-between bg-slate-900/50 p-2 rounded border border-slate-700/50">
                         <span>จำนวน Keywords (Nodes):</span>
@@ -62,7 +70,7 @@
                 <p class="font-semibold text-slate-300">💡 การตอบสนองกราฟ:</p>
                 <p>• คลิกแล้วลากวงกลม (Node) เพื่อขยับตำแหน่งได้</p>
                 <p>• ใช้ลูกกลิ้งเมาส์ ขยาย/ย่อ ขนาดกราฟได้</p>
-                <p>• เอาเมาส์ชี้เพื่อไฮไลต์โหนดที่เชื่อมโยงกัน</p>
+                <p>• เอาเมาส์ชี้เพื่อดูโครงข่ายความเชื่อมโยง</p>
             </div>
         </aside>
 
@@ -73,20 +81,7 @@
     </div>
 
     <script>
-        // ฝังข้อมูล Author Keywords จากไฟล์ CSV Scopus ลงในสคริปต์
-        const embeddedScopusData = [
-            "AI failure; AI-based Software; Empirical software engineering; Mixed methods; Pre-trained models",
-            "Artificial general intelligence; Cognitive evaluation; Large language models; LLM-as-a-judge; Mini-mental state examination; Spatial perception",
-            "Decision-making; Embodied artificial intelligence; Execution framework; Foundation models; Intelligent manufacturing; Manufacturing AI evaluation; Perception",
-            "Cumulative coherence; Partially known support; Restricted isometry property; Restricted orthogonality property; Stable recovery; Weighted ℓp/ℓq-minimization",
-            "Empirical software engineering; Green AI; Machine learning-enabled systems; Software sustainability",
-            "Artificial Intelligence; GIS; Spatial Analysis; Urban Modelling; Urban Planning",
-            "Behavior tree; Human–robot collaboration; Scheduling; Task planning",
-            "Artificial Intelligence; digital ecosystem in research and education; E-learning; Education 4.0; explainable AI",
-            "Majorization-minimization; Nonconvex and nonsmooth optimization; Proximal Newton-like method",
-            "Graph wavelets; Image compression; Median filter; Nonlinear filter banks"
-        ];
-
+        let rawKeywordsList = [];
         let network = null;
         let nodesDataset = null;
         let edgesDataset = null;
@@ -127,7 +122,7 @@
                         title: `Keyword: ${kw}<br>Frequency: ${count}`,
                         color: { background: originalColor, opacity: 1 },
                         originalColor: originalColor,
-                        font: { color: '#ffffff', size: 14 }
+                        font: { color: '#ffffff', size: 13 }
                     });
                 }
             });
@@ -145,7 +140,7 @@
                         to: target,
                         value: weight,
                         title: `Co-occurrence: ${weight}`,
-                        color: { color: '#6366f1', highlight: '#a5b4fc', opacity: 0.5 }
+                        color: { color: '#6366f1', highlight: '#a5b4fc', opacity: 0.4 }
                     });
                 }
             });
@@ -161,14 +156,14 @@
             const options = {
                 nodes: {
                     shape: 'dot',
-                    scaling: { min: 14, max: 40 }
+                    scaling: { min: 12, max: 38 }
                 },
                 edges: {
                     smooth: { type: 'continuous' }
                 },
                 physics: {
                     stabilization: false,
-                    barnesHut: { gravitationalConstant: -3000, springLength: 90 }
+                    barnesHut: { gravitationalConstant: -4000, springLength: 100 }
                 },
                 interaction: { dragNodes: true, hover: true }
             };
@@ -202,13 +197,38 @@
             });
         }
 
-        window.onload = function() {
-            processData(embeddedScopusData, 1);
-        };
+        // อ่านไฟล์ CSV ในเครื่องผู้ใช้ หรือใช้สไลเดอร์
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const keywordsCol = results.meta.fields.find(f => 
+                        f.toLowerCase().includes('author keywords') || 
+                        f.toLowerCase().includes('index keywords') ||
+                        f.toLowerCase().includes('keywords')
+                    );
+
+                    if (keywordsCol) {
+                        rawKeywordsList = results.data
+                            .map(row => row[keywordsCol])
+                            .filter(val => val && val.trim() !== '');
+
+                        const minVal = parseInt(document.getElementById('minOccur').value);
+                        processData(rawKeywordsList, minVal);
+                    }
+                }
+            });
+        });
 
         document.getElementById('minOccur').addEventListener('input', function(e) {
             document.getElementById('minOccurVal').innerText = e.target.value;
-            processData(embeddedScopusData, parseInt(e.target.value));
+            if (rawKeywordsList.length > 0) {
+                processData(rawKeywordsList, parseInt(e.target.value));
+            }
         });
     </script>
 </body>
