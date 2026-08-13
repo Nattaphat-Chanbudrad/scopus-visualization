@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scopus Keyword Co-occurrence Network</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- vis-network CDN -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- PapaParse CDN สำหรับอ่านไฟล์ CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Header Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-indigo-400">Scopus Keyword Co-occurrence Network</h1>
+            <p class="text-xs text-slate-400">วิเคราะห์เครือข่ายความสัมพันธ์ Keyword จากไฟล์ Scopus CSV</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg cursor-pointer transition shadow flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>อัปโหลดไฟล์ Scopus CSV</span>
+                <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+            </label>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col md:flex-row relative">
+        <!-- Sidebar Controls -->
+        <aside class="w-full md:w-80 bg-slate-800/80 border-r border-slate-700 p-5 space-y-6">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">การปรับแต่งความถี่</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>ความถี่ขั้นต่ำของ Keyword:</span>
+                            <span id="minOccurVal" class="text-indigo-400 font-bold">2</span>
+                        </label>
+                        <input type="range" id="minOccur" min="1" max="20" value="2" class="w-full mt-1 accent-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-700 pt-4">
+                <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">สรุปข้อมูลเครือข่าย</h2>
+                <div class="space-y-2 text-sm text-slate-300">
+                    <div class="flex justify-between bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span>ไฟล์ที่ใช้งาน:</span>
+                        <span id="fileName" class="font-medium text-slate-400 truncate max-w-[120px]">ยังไม่ได้เลือก</span>
+                    </div>
+                    <div class="flex justify-between bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span>จำนวน Keywords (Nodes):</span>
+                        <span id="nodeCount" class="font-bold text-emerald-400">0</span>
+                    </div>
+                    <div class="flex justify-between bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span>การเชื่อมโยง (Edges):</span>
+                        <span id="edgeCount" class="font-bold text-amber-400">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-xs text-slate-400 bg-slate-900/40 p-3 rounded border border-slate-700/50 space-y-1">
+                <p class="font-semibold text-slate-300">💡 การตอบสนองกราฟ:</p>
+                <p>• คลิกแล้วลากวงกลม (Node) เพื่อขยับตำแหน่งได้</p>
+                <p>• ใช้ลูกกลิ้งเมาส์ ขยาย/ย่อ ขนาดกราฟได้</p>
+                <p>• เอาเมาส์ชี้เพื่อดูจำนวนครั้งที่ปรากฏ</p>
+            </div>
+        </aside>
+
+        <!-- Network Graph Screen -->
+        <main class="flex-1 h-[600px] md:h-auto relative bg-slate-950 flex items-center justify-center">
+            <div id="placeholderText" class="text-center text-slate-500 p-6">
+                <svg class="w-16 h-16 mx-auto mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <p class="text-lg font-medium">กดปุ่ม "อัปโหลดไฟล์ Scopus CSV" ด้านบนขวา</p>
+                <p class="text-sm text-slate-600 mt-1">เพื่อสร้าง Network Visualization จากข้อมูลของคุณ</p>
+            </div>
+            <div id="mynetwork" class="w-full h-full absolute top-0 left-0 hidden"></div>
+        </main>
+    </div>
+
+    <script>
+        let rawKeywordsList = [];
+        let network = null;
+
+        // ฟังก์ชันประมวลผลคำศัพท์สร้าง Network
+        function processData(keywordArray, minCount) {
+            const wordCounts = {};
+            const coOccurrences = {};
+
+            keywordArray.forEach(row => {
+                if (!row) return;
+                // แยกคำศัพท์ด้วยเครื่องหมายเซมิโคลอน (;)
+                const kwList = row.split(';')
+                    .map(k => k.trim().toLowerCase())
+                    .filter(k => k.length > 0);
+
+                // นับจำนวนครั้งที่พบคำศัพท์
+                kwList.forEach(k => {
+                    wordCounts[k] = (wordCounts[k] || 0) + 1;
+                });
+
+                // นับจำนวนครั้งที่พบคำศัพท์คู่กัน
+                for (let i = 0; i < kwList.length; i++) {
+                    for (let j = i + 1; j < kwList.length; j++) {
+                        const pair = [kwList[i], kwList[j]].sort().join('___');
+                        coOccurrences[pair] = (coOccurrences[pair] || 0) + 1;
+                    }
+                }
+            });
+
+            // สร้าง Nodes
+            const nodes = [];
+            Object.keys(wordCounts).forEach(kw => {
+                const count = wordCounts[kw];
+                if (count >= minCount) {
+                    nodes.push({
+                        id: kw,
+                        label: kw,
+                        value: count,
+                        title: `Keyword: ${kw}<br>Frequency: ${count}`,
+                        font: { color: '#ffffff', size: 14 }
+                    });
+                }
+            });
+
+            const validNodeIds = new Set(nodes.map(n => n.id));
+
+            // สร้าง Edges (เส้นเชื่อม)
+            const edges = [];
+            Object.keys(coOccurrences).forEach(pair => {
+                const [source, target] = pair.split('___');
+                const weight = coOccurrences[pair];
+
+                if (validNodeIds.has(source) && validNodeIds.has(target)) {
+                    edges.push({
+                        from: source,
+                        to: target,
+                        value: weight,
+                        title: `Co-occurrence: ${weight}`,
+                        color: { color: '#6366f1', highlight: '#a5b4fc', opacity: 0.5 }
+                    });
+                }
+            });
+
+            // อัปเดตสถิติ
+            document.getElementById('nodeCount').innerText = nodes.length;
+            document.getElementById('edgeCount').innerText = edges.length;
+
+            // สลับการแสดงผลกราฟ
+            document.getElementById('placeholderText').classList.add('hidden');
+            const container = document.getElementById('mynetwork');
+            container.classList.remove('hidden');
+
+            const data = { nodes: nodes, edges: edges };
+            const options = {
+                nodes: {
+                    shape: 'dot',
+                    scaling: { min: 14, max: 40 }
+                },
+                edges: {
+                    smooth: { type: 'continuous' }
+                },
+                physics: {
+                    stabilization: false,
+                    barnesHut: { gravitationalConstant: -4000, springLength: 100 }
+                },
+                interaction: { hover: true }
+            };
+
+            if (network) network.destroy();
+            network = new vis.Network(container, data, options);
+        }
+
+        // อ่านไฟล์ CSV
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').innerText = file.name;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    // หาคอลัมน์ Keywords จากไฟล์ของ Scopus
+                    const keywordsCol = results.meta.fields.find(f => 
+                        f.toLowerCase().includes('author keywords') || 
+                        f.toLowerCase().includes('index keywords') ||
+                        f.toLowerCase().includes('keywords')
+                    );
+
+                    if (!keywordsCol) {
+                        alert('ไม่พบคอลัมน์ Keywords ในไฟล์ CSV นี้ กรุณาตรวจสอบว่าเลือก Export คอลัมน์ "Author Keywords" มาด้วยหรือไม่');
+                        return;
+                    }
+
+                    rawKeywordsList = results.data
+                        .map(row => row[keywordsCol])
+                        .filter(val => val && val.trim() !== '');
+
+                    const minVal = parseInt(document.getElementById('minOccur').value);
+                    processData(rawKeywordsList, minVal);
+                }
+            });
+        });
+
+        // สไลเดอร์ปรับความถี่ขั้นต่ำ
+        document.getElementById('minOccur').addEventListener('input', function(e) {
+            document.getElementById('minOccurVal').innerText = e.target.value;
+            if (rawKeywordsList.length > 0) {
+                processData(rawKeywordsList, parseInt(e.target.value));
+            }
+        });
+    </script>
+</body>
+</html>
