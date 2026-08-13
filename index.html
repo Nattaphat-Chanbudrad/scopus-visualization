@@ -19,15 +19,9 @@
             <h1 class="text-xl font-bold text-indigo-400">Scopus Keyword Co-occurrence Network</h1>
             <p class="text-xs text-slate-400">วิเคราะห์เครือข่ายความสัมพันธ์ Keyword จากข้อมูล Scopus 600 รายการ (Computer Science)</p>
         </div>
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>ฝังข้อมูล 600 รายการเรียบร้อย</span>
-            </div>
-            <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg cursor-pointer transition shadow">
-                📁 เปลี่ยนไฟล์ CSV
-                <input type="file" id="csvFileInput" accept=".csv" class="hidden">
-            </label>
+        <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>ฝังข้อมูล 600 รายการเรียบร้อย</span>
         </div>
     </header>
 
@@ -197,32 +191,53 @@
             });
         }
 
-        // อ่านไฟล์ CSV
-        document.getElementById('csvFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            Papa.parse(file, {
+        // ดึงไฟล์ CSV โดยอัตโนมัติจาก GitHub Repository
+        window.onload = function() {
+            // ค้นหาไฟล์ CSV ของ Scopus ใน Root Directory ของ GitHub Repo
+            Papa.parse("scopus_export_Aug 13-2026_d6d2f01f-02b5-425d-b6e6-b8df145ce6f6.csv", {
+                download: true,
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    const keywordsCol = results.meta.fields.find(f => 
+                    const keywordsCol = results.meta.fields ? results.meta.fields.find(f => 
                         f.toLowerCase().includes('author keywords') || 
                         f.toLowerCase().includes('index keywords') ||
                         f.toLowerCase().includes('keywords')
-                    );
+                    ) : null;
 
                     if (keywordsCol) {
                         rawKeywordsList = results.data
                             .map(row => row[keywordsCol])
                             .filter(val => val && val.trim() !== '');
 
-                        const minVal = parseInt(document.getElementById('minOccur').value);
-                        processData(rawKeywordsList, minVal);
+                        processData(rawKeywordsList, 3);
                     }
+                },
+                error: function() {
+                    console.log("พยายามดึงไฟล์ CSV สำรอง...");
+                    // หากชื่อไฟล์แรกไม่ตรง ให้ค้นหาไฟล์ CSV ใดก็ได้ในโฟลเดอร์
+                    fetch('./')
+                        .then(response => response.text())
+                        .then(text => {
+                            const match = text.match(/href="([^"]+\.csv)"/i);
+                            if (match) {
+                                Papa.parse(match[1], {
+                                    download: true,
+                                    header: true,
+                                    skipEmptyLines: true,
+                                    complete: function(res) {
+                                        const kwCol = res.meta.fields.find(f => f.toLowerCase().includes('keywords'));
+                                        if (kwCol) {
+                                            rawKeywordsList = res.data.map(r => r[kwCol]).filter(v => v);
+                                            processData(rawKeywordsList, 3);
+                                        }
+                                    }
+                                });
+                            }
+                        });
                 }
             });
-        });
+        };
 
         document.getElementById('minOccur').addEventListener('input', function(e) {
             document.getElementById('minOccurVal').innerText = e.target.value;
