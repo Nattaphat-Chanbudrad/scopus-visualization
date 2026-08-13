@@ -73,7 +73,7 @@
     </div>
 
     <script>
-        // ฝังข้อมูล Author Keywords จากไฟล์ CSV ของคุณลงในสคริปต์โดยตรง
+        // ฝังข้อมูล Author Keywords จากไฟล์ CSV Scopus ลงในสคริปต์
         const embeddedScopusData = [
             "AI failure; AI-based Software; Empirical software engineering; Mixed methods; Pre-trained models",
             "Artificial general intelligence; Cognitive evaluation; Large language models; LLM-as-a-judge; Mini-mental state examination; Spatial perception",
@@ -202,12 +202,10 @@
             });
         }
 
-        // โหลดและสร้างกราฟทันทีเมื่อเปิดหน้าเว็บ
         window.onload = function() {
             processData(embeddedScopusData, 1);
         };
 
-        // สไลเดอร์ปรับความถี่ขั้นต่ำ
         document.getElementById('minOccur').addEventListener('input', function(e) {
             document.getElementById('minOccurVal').innerText = e.target.value;
             processData(embeddedScopusData, parseInt(e.target.value));
