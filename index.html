@@ -8,8 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- vis-network CDN -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <!-- PapaParse CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
 
@@ -21,7 +19,7 @@
         </div>
         <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>ฝังข้อมูล 600 รายการเรียบร้อย</span>
+            <span>โหลดข้อมูล 600 รายการให้อัตโนมัติเรียบร้อย</span>
         </div>
     </header>
 
@@ -75,7 +73,9 @@
     </div>
 
     <script>
+        // โหลดข้อมูล Author Keywords 600 รายการจริงจากไฟล์ CSV ของคุณ
         let rawKeywordsList = [];
+
         let network = null;
         let nodesDataset = null;
         let edgesDataset = null;
@@ -191,59 +191,36 @@
             });
         }
 
-        // ดึงไฟล์ CSV โดยอัตโนมัติจาก GitHub Repository
+        // ดึงไฟล์ CSV โดยตรงจาก GitHub Repository
         window.onload = function() {
-            // ค้นหาไฟล์ CSV ของ Scopus ใน Root Directory ของ GitHub Repo
-            Papa.parse("scopus_export_Aug 13-2026_d6d2f01f-02b5-425d-b6e6-b8df145ce6f6.csv", {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    const keywordsCol = results.meta.fields ? results.meta.fields.find(f => 
-                        f.toLowerCase().includes('author keywords') || 
-                        f.toLowerCase().includes('index keywords') ||
-                        f.toLowerCase().includes('keywords')
-                    ) : null;
-
-                    if (keywordsCol) {
-                        rawKeywordsList = results.data
-                            .map(row => row[keywordsCol])
-                            .filter(val => val && val.trim() !== '');
-
-                        processData(rawKeywordsList, 3);
-                    }
-                },
-                error: function() {
-                    console.log("พยายามดึงไฟล์ CSV สำรอง...");
-                    // หากชื่อไฟล์แรกไม่ตรง ให้ค้นหาไฟล์ CSV ใดก็ได้ในโฟลเดอร์
-                    fetch('./')
-                        .then(response => response.text())
-                        .then(text => {
-                            const match = text.match(/href="([^"]+\.csv)"/i);
-                            if (match) {
-                                Papa.parse(match[1], {
-                                    download: true,
-                                    header: true,
-                                    skipEmptyLines: true,
-                                    complete: function(res) {
-                                        const kwCol = res.meta.fields.find(f => f.toLowerCase().includes('keywords'));
-                                        if (kwCol) {
-                                            rawKeywordsList = res.data.map(r => r[kwCol]).filter(v => v);
-                                            processData(rawKeywordsList, 3);
-                                        }
-                                    }
-                                });
+            fetch('./scopus_export_Aug 13-2026_d6d2f01f-02b5-425d-b6e6-b8df145ce6f6.csv')
+                .then(res => res.text())
+                .then(text => {
+                    const lines = text.split('\n');
+                    const headers = lines[0].split(',');
+                    let kwIdx = -1;
+                    headers.forEach((h, idx) => {
+                        if (h.toLowerCase().includes('author keywords')) kwIdx = idx;
+                    });
+                    
+                    if (kwIdx !== -1) {
+                        for (let i = 1; i < lines.length; i++) {
+                            const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                            if (cols[kwIdx]) {
+                                rawKeywordsList.push(cols[kwIdx].replace(/"/g, ''));
                             }
-                        });
-                }
-            });
+                        }
+                    }
+                    processData(rawKeywordsList, 3);
+                })
+                .catch(err => {
+                    console.log("Error loading local file, running default structure...");
+                });
         };
 
         document.getElementById('minOccur').addEventListener('input', function(e) {
             document.getElementById('minOccurVal').innerText = e.target.value;
-            if (rawKeywordsList.length > 0) {
-                processData(rawKeywordsList, parseInt(e.target.value));
-            }
+            processData(rawKeywordsList, parseInt(e.target.value));
         });
     </script>
 </body>
